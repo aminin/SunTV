@@ -1,0 +1,331 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html lang="ru">
+    <head>
+        <title>Hello</title>
+        <link rel="stylesheet" href="css/bootstrap.css"/>
+        <link rel="stylesheet" href="css/legend.css"/>
+        <link rel="stylesheet" href="css/smartbox.css"/>
+        <!-- <link rel="stylesheet" href="css/style.css"/> -->
+
+        <script type="text/javascript" src="js/src/libs/jquery-1.10.2.min.js"></script>
+        <script type="text/javascript" src="js/src/libs/lodash.compat.min.js"></script>
+        <script type="text/javascript" src="js/src/libs/event_emitter.js"></script>
+        <script type="text/javascript" src="js/bootstrap.js"></script>
+
+        <script type="text/javascript" src="js/src/sb.js"></script> 
+        <script type="text/javascript" src="js/src/sb.platform.js"></script> 
+
+        <script type="text/javascript" src="js/src/platforms/_browser/player.browser.js"></script> 
+        <script type="text/javascript" src="js/src/platforms/_browser/sb.platform.browser.js"></script> 
+        <script type="text/javascript" src="js/src/platforms/_browser/voicelink.browser.js"></script> 
+        
+        <script type="text/javascript" src="js/src/platforms/dune/player.dune.js"></script> 
+        <script type="text/javascript" src="js/src/platforms/dune/sb.platform.dune.js"></script> 
+
+        <script type="text/javascript" src="js/src/platforms/lg/player.lg.js"></script> 
+        <script type="text/javascript" src="js/src/platforms/lg/sb.platform.lg.js"></script> 
+        
+        <script type="text/javascript" src="js/src/platforms/mag/player.mag.js"></script> 
+        <script type="text/javascript" src="js/src/platforms/mag/sb.platform.mag.js"></script> 
+
+        <script type="text/javascript" src="js/src/platforms/philips/player.philips.js"></script> 
+        <script type="text/javascript" src="js/src/platforms/philips/sb.platform.philips.js"></script> 
+
+        <script type="text/javascript" src="js/src/platforms/samsung/localstorage.js"></script> 
+        <script type="text/javascript" src="js/src/platforms/samsung/player.samsung.js"></script> 
+        <script type="text/javascript" src="js/src/platforms/samsung/sb.platform.samsung.js"></script> 
+        <script type="text/javascript" src="js/src/platforms/samsung/voicelink.samsung.js"></script> 
+        
+        <script type="text/javascript" src="js/src/plugins/input.js"></script> 
+        <script type="text/javascript" src="js/src/plugins/keyboard.js"></script> 
+        <script type="text/javascript" src="js/src/plugins/legend.js"></script> 
+        <script type="text/javascript" src="js/src/plugins/log.js"></script> 
+        <script type="text/javascript" src="js/src/plugins/nav.js"></script> 
+        <script type="text/javascript" src="js/src/plugins/player.js"></script> 
+        <script type="text/javascript" src="js/src/plugins/voicelink.js"></script>
+
+        <script type="text/lodash-template" id="ltpl-movie">
+            <div class="movie-block" data-movie-id="{{movie_id}}">
+                <img src="{{cover}}" alt="" class="img-responsive img-thumbnail">
+                <div>
+                    <h1>{{name}}</h1>
+                    {% if(typeof rating_imdb_value != 'undefined' && rating_imdb_value != '0') { %}
+                        <span class="pull-left">IMDB: {{rating_imdb_value}}</span>
+                    {% } %}
+                    <span class="pull-right">{{hit}} <span class="glyphicon glyphicon-heart"></span></span>
+                    <div class="clearfix"></div>
+                </div>
+            </div>
+        </script>
+
+        <script type="text/lodash-template" id="ltpl-movie-single">
+
+        </script>
+        
+        <script type="text/javascript">
+            _.templateSettings.interpolate = /\{\{([\s\S]+?)\}\}/g;
+            _.templateSettings.evaluate = /\{%([\s\S]+?)%\}/g;
+
+            var DataProvider = {
+                remoteHost:"http://online.scts.tv/",
+                getCatalog:function(filter, cb){
+                    var data = {};
+                    data.action = [this.requestActions.getCatalog];
+                    data.genre = [filter.genre] || [0];
+                    data.offset = [filter.offset] || [0];
+                    data.size = [filter.size] || [12];
+                    this.request(data, cb);
+                },
+                getMovie:function(id, cb){
+                    var data = {};
+                    data.action = [this.requestActions.getMovie];
+                    data.movie_id = [id];
+                    this.request(data, cb);
+                },
+                getBestsellers:function(cb){
+                    var data = {};
+                    data.action = [this.requestActions.getBestsellers];
+                    this.request(data, cb);
+                },
+                getGenres:function(cb){
+                    var data = {};
+                    data.action = [this.requestActions.getGenres];
+                    this.request(data, cb);
+                },
+                requestParams:{
+                    type:"POST",
+                    url: "http://online.scts.tv/api.php?format=ajax",
+                    contentType:'application/octet-stream; charser=utf-8',
+                    crossDomain:true,
+                    data:null,
+                    success:function(response){}
+                },
+                requestActions:{
+                    getCatalog:'video.getCatalog',
+                    getMovie:'videoCustom.getMovie',
+                    getBestsellers:'video.getBestsellers',
+                    getGenres:'video.getGenres'
+                },
+                request:function(data, successCb){
+                    var rp = this.requestParams;
+                    rp.data = data;
+                    rp.success = successCb;
+                    $.ajax(this.requestParams);
+                }
+            };
+
+            var Controller = {
+                actions: [this.showMoviesList, this.showMovieInfo, this.playMovie],
+                currentAction: this.showMoviesList,
+                showMoviesList:function(genre, offset, size){
+                    var filter = {};
+                    filter.genre = genre;
+                    filter.offset = offset;
+                    filter.size = size;
+                    DataProvider.getCatalog(filter, this._renderMoviesListData);
+                },
+                showMovieInfo:function(id){
+                    DataProvider.getMovie(id, function(data){
+                        console.log(JSON.parse(data.replace(/JsHttpRequest.dataReady\((.+)\)/, '$1')));
+                    });
+                },
+                playMovie:function(id){
+                    DataProvider.getMovie(id, function(data){
+                        data = JSON.parse(data.replace(/JsHttpRequest.dataReady\((.+)\)/, '$1'));
+                        console.log(data);
+                        files = data.js[0].response.movie.files;
+                        var playLink;
+                        if(files.length > 1){
+                            playLink = files[1].links.download;
+                        }else if(files.length == 1){
+                            playLink = files[0].links.download;
+                        }
+                        $('#smart_player').show();
+                        Player.play({url:playLink});
+                    });
+                },
+                _renderMoviesListData:function(data){
+                    data = JSON.parse(data.replace(/JsHttpRequest.dataReady\((.+)\)/, '$1'));
+                    console.log(data);
+                    movies = data.js[0].response.movies;
+                    if(movies != undefined) {
+                        html = '';
+                        for (var i=0; i<movies.length; i++) {
+                            movies[i].cover = DataProvider.remoteHost + movies[i].cover;
+                            html = html + (_.template($('script#ltpl-movie').text()))(movies[i]);
+                        }
+                        $('.movies-stack').html(html);
+                    }
+                }
+            };
+            SB.ready(function(){
+                $$nav.on();
+                $$legend.show();
+                $(function(){
+                    Controller.showMoviesList(42,0,12);
+                    cb = function(data){console.log(JSON.parse(data.replace(/JsHttpRequest.dataReady\((.+)\)/, '$1')))};
+                    $('.movies-stack').delegate('div.movie-block','click',function(ev){
+                        var id = $(ev.currentTarget).attr('data-movie-id');
+                        console.log(id);
+                        Controller.playMovie(id);
+                    });
+                    $(document.body).on('nav_key:red',function(evy){
+                        $('#smart_player').hide();
+                    });
+                    $(document.body).on('nav_key:green',function(evy){
+                        $('.wrap').hide();
+                        $('body').css('background','none');
+                        Player.play({url:'http://yama.scts.tv/online/streaming/K/I/kiss_x_sis_12461_12473_215_12471_12473_2010_2/%5BYousei-raws%5D%20KissXSis%2001%20%5BBDrip%201920x1080%20x264%20FLAC%5D.mkv.mp4'})
+                    })
+//                DataProvider.getBestsellers(cb);
+//                DataProvider.getGenres(cb);
+//                DataProvider.getMovie(3590, cb);
+                });
+            })
+        </script>
+        <style type="text/css">
+            @font-face{
+                font-family: OpenSansLight;
+                src: url(fonts/OpenSans-Light.ttf);
+            }
+            * {
+                outline: none !important;
+            }
+            body {
+                background: linear-gradient(210deg, #192342 0%,#6274BB 32%,#243C6E 64%,#03123F 100%);
+                font-family: OpenSansLight serif;
+                height: 100vh;
+            }
+            .container-fluid {
+                padding-right: 1%;
+                padding-left: 1%;
+            }
+            .layout .col-lg-3 {
+                padding-left: 2%;
+                padding-right: 0%;
+            }
+            .layout .row {
+                margin-right: 0;
+            }
+            .nav.nav-pills.nav-stacked{
+                margin-bottom: 6vh;
+            }
+            .nav.nav-pills.nav-stacked li {
+                margin: 0 0;
+                border-radius: 0px;
+                height: 5.7vh;
+                font-size: 2vh;
+                border-top: 1px solid rgba(61, 100, 202, 0.3);
+                border-bottom: 1px solid rgba(25, 56, 113, 0.3);
+                background-color: rgba(255,255,255,0);
+                color: #fff;
+            }
+            .nav.nav-pills.nav-stacked li:hover{
+                background-color: rgba(255,255,255,0.2);
+                border-right: 5px solid red;
+                transition: border-right 0.5s ease-in, background-color 0.2s ease-out;
+            }
+            .nav > li > a {
+                color: #fff;
+            }
+            .nav > li > a:hover, .nav > li > a:focus {
+                background-color: transparent;
+            }
+            .nav > li:first-child{
+                border-top: none !important;
+            }
+            .nav > li:last-child{
+                border-bottom: none !important;
+            }
+            .layout .col-lg-9{
+                padding-left: 5%;
+                height: 100%;
+                padding-right: 0;
+            }
+
+            .search-box {
+                position:relative;
+            }
+            .movies-stack {
+                position: relative;
+                height: 85vh;
+                display: block;
+            }
+            .movies-stack > div {
+                cursor: pointer;
+                display: inline-block;
+                margin-right: 1.98%;
+                width: 22.7%;
+                overflow: hidden;
+                height: 25vh;
+                position: relative;
+                margin-bottom: 1vh;
+                border-top: 3px solid transparent;
+                border-bottom: 3px solid transparent;
+            }
+            .movies-stack > div:hover {
+                border-top: 3px solid red;
+                border-bottom: 3px solid red;
+                transition: border 0.5s ease;
+            }
+            .movies-stack > div >img.img-thumbnail{
+                width: 100%;
+                border-radius: 0px;
+            }
+            .movies-stack > div > div {
+                background: rgba(255,255,255,0.5);
+                border-bottom:5px solid #fff;
+                position: absolute;
+                width: 100%;
+                bottom: 0px;
+                padding: 0 6% 6%;
+            }
+            .movies-stack > div h1 {
+                margin-top: 5%;
+                margin-bottom: 2%;
+                font-size: 2.28vh;
+            }
+            .movies-stack span.glyphicon.glyphicon-heart {
+                color: red;
+            }
+            .top-line {
+                height: 15vh;
+            }
+            #smart_player {
+                position: absolute;
+                z-index: 10;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="wrap">
+            <div class="container-fluid layout">
+                <div class="row top-line"></div>
+                <div class="col-lg-3">
+                    <div class="row">
+                        <ul class="nav nav-pills nav-stacked">
+                          <li role="presentation"><a href="#">Home</a></li>
+                          <li role="presentation"><a href="#">Profile</a></li>
+                          <li role="presentation"><a href="#">Messages</a></li>
+                          <li role="presentation"><a href="#">Home</a></li>
+                          <li role="presentation"><a href="#">Profile</a></li>
+                          <li role="presentation"><a href="#">Messages</a></li>
+                          <li role="presentation"><a href="#">Messages</a></li>
+                        </ul>
+                    </div>
+                    <div class="clearfix"></div>
+                    <div class="row form-group search-box">
+                        <input type="text" class="form-control" id="movieSearch">
+                        <span class="glyphicon glyphicon-search form-control-feedback"></span>
+                    </div>
+                </div>
+                <div class="col-lg-9">
+                    <div class="row movies-stack">
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

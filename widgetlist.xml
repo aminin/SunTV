@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rsp stat="ok">
+  <list>
+    <widget id="TestSunTVApp">
+      <title>SunTVApp</title>
+      <compression size="10" type="zip"/>
+      <description>Sun TV App!</description>
+      <download>http://192.168.0.148/testApp.zip</download>
+    </widget>
+  </list> 
+  <list>
+    <widget id="VideoSunTVApp">
+      <title>SunTVApp</title>
+      <compression size="10" type="zip"/>
+      <description>Sun TV App!</description>
+      <download>http://192.168.0.148/videoApp.zip</download>
+    </widget>
+  </list>
+</rsp>

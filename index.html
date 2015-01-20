@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<body>
+        <div>
+            <h1>Hello</h1>
+        </div>
+    </body>
+<head>
+    <title>Hello</title>
+    <script src="https://raw.githubusercontent.com/lodash/lodash/2.4.1/dist/lodash.js"></script>
+    <script src="https://code.jquery.com/jquery-2.1.3.js"></script>
+    <script>
+
+        $.ajax({
+            type:'POST',
+            url:"http://online.scts.tv/api.php?format=ajax",
+            contentType:'application/octet-stream; charser=utf-8',
+            crossDomain: true,
+            data:{
+                action:['video.getCatalog'],
+                genre:[0],
+                offset:[16],
+                size:[16]
+            },
+            success:function(response){
+                console.log(JSON.parse(response.replace( /JsHttpRequest.dataReady\((.+)\)/ , '$1')))
+            }
+        })
+    </script>
+</head>
+</html>
