@@ -46,8 +46,8 @@
         <script type="text/javascript" src="js/src/plugins/voicelink.js"></script>
 
         <script type="text/lodash-template" id="ltpl-movie">
-            <div class="movie-block" data-movie-id="{{movie_id}}">
-                <img src="{{cover}}" alt="" class="img-responsive img-thumbnail">
+            <div class="nav-item menu-item movie-block" data-movie-id="{{movie_id}}">
+                <img src="{{originalCover}}" alt="" class="img-responsive img-thumbnail">
                 <div>
                     <h1>{{name}}</h1>
                     {% if(typeof rating_imdb_value != 'undefined' && rating_imdb_value != '0') { %}
@@ -71,10 +71,11 @@
                 remoteHost:"http://online.scts.tv/",
                 getCatalog:function(filter, cb){
                     var data = {};
-                    data.action = [this.requestActions.getCatalog];
-                    data.genre = [filter.genre] || [0];
+                    data.action = [this.requestActions.getCatalogQ];
+                    data.genre = [filter.genre] || undefined;
                     data.offset = [filter.offset] || [0];
                     data.size = [filter.size] || [12];
+                    data.filterStreamingOnly = [filter.filterStreamingOnly] || undefined;
                     this.request(data, cb);
                 },
                 getMovie:function(id, cb){
@@ -103,6 +104,7 @@
                 },
                 requestActions:{
                     getCatalog:'video.getCatalog',
+                    getCatalogQ:'video.getCatalogQ',
                     getMovie:'videoCustom.getMovie',
                     getBestsellers:'video.getBestsellers',
                     getGenres:'video.getGenres'
@@ -123,6 +125,7 @@
                     filter.genre = genre;
                     filter.offset = offset;
                     filter.size = size;
+                    filter.filterStreamingOnly = true;
                     DataProvider.getCatalog(filter, this._renderMoviesListData);
                 },
                 showMovieInfo:function(id){
@@ -135,15 +138,28 @@
                         data = JSON.parse(data.replace(/JsHttpRequest.dataReady\((.+)\)/, '$1'));
                         console.log(data);
                         files = data.js[0].response.movie.files;
-                        var playLink;
-                        if(files.length > 1){
-                            playLink = files[1].links.download;
-                        }else if(files.length == 1){
-                            playLink = files[0].links.download;
+                        var streams = [];
+                        for(var i = 0; i < files.length; i++){
+                            if(typeof files[i].links.streams == 'object'){
+                                for(str in files[i].links.streams){
+                                    if(str != undefined){
+                                        streams.push(files[i].links.streams[str])
+                                    }
+                                }
+                            }
                         }
+                        console.log(streams);
+                        $('.wrap').hide();
                         $('#smart_player').show();
-                        Player.play({url:playLink});
+                        $('body').css('background','transparent');
+                        Player.play({url:streams[streams.length-1],type:'vod'});
                     });
+                },
+                stopMovie:function(){
+                    Player.stop();
+                    $('#smart_player').hide();
+                    $('body').css('background','linear-gradient(210deg, #192342 0%,#6274BB 32%,#243C6E 64%,#03123F 100%)');
+                    $('.wrap').show();
                 },
                 _renderMoviesListData:function(data){
                     data = JSON.parse(data.replace(/JsHttpRequest.dataReady\((.+)\)/, '$1'));
@@ -152,35 +168,61 @@
                     if(movies != undefined) {
                         html = '';
                         for (var i=0; i<movies.length; i++) {
-                            movies[i].cover = DataProvider.remoteHost + movies[i].cover;
+                            movies[i].originalCover = DataProvider.remoteHost + movies[i].originalCover;
                             html = html + (_.template($('script#ltpl-movie').text()))(movies[i]);
                         }
+//                        parentBlock = $('.movies-stack').parent();
+//
+//                        $('.movies-stack').removeClass('.movies-stack').remove();
+//                        parentBlock.appendChild('<div class="movies-stack-append"></div>');
+//                        $('.movies-stack-append').html(html).removeClass('.movies-stack-append').addClass('.movies-stack');
+//
+//                        parentBlock.prependChild('<div class="movies-stack-prepend"></div>');
+//                        $('.movies-stack-prepend').html(html).removeClass('.movies-stack-prepend').addClass('.movies-stack');
+
                         $('.movies-stack').html(html);
+                        $$nav.current($('.movies-stack').find($$nav.area_selector).filter(':visible').eq(0));
                     }
                 }
             };
             SB.ready(function(){
                 $$nav.on();
                 $$legend.show();
+                Player.play();
                 $(function(){
-                    Controller.showMoviesList(42,0,12);
-                    cb = function(data){console.log(JSON.parse(data.replace(/JsHttpRequest.dataReady\((.+)\)/, '$1')))};
+                    var offset = 0;
+                    var genre = undefined;
+                    var elsForPage = 12;
+                    Controller.showMoviesList(genre, offset, elsForPage);
+
                     $('.movies-stack').delegate('div.movie-block','click',function(ev){
                         var id = $(ev.currentTarget).attr('data-movie-id');
                         console.log(id);
                         Controller.playMovie(id);
                     });
+                    $('.movies-stack').delegate('div.movie-block', 'nav_key:up nav_key:down', function(ev){
+                        var el = ev.currentTarget;
+                        var dir = ev.keyName;
+                        var navs = $('.movies-stack').find($$nav.area_selector).filter(':visible');
+                        var nextSibling = $$nav.findNav($(el), dir, navs);
+                        console.log(el,nextSibling,dir);
+                        if(!nextSibling){
+                            if(dir == 'up'){
+                                offset -= elsForPage;
+                                if(offset < 0) offset = 0;
+                            }else if(dir == 'down'){
+                                offset += elsForPage;
+                                //TODO: upper bound
+                            }
+                            Controller.showMoviesList(genre, offset, elsForPage);
+
+                        }
+                    })
                     $(document.body).on('nav_key:red',function(evy){
-                        $('#smart_player').hide();
+                        Controller.stopMovie();
                     });
                     $(document.body).on('nav_key:green',function(evy){
-                        $('.wrap').hide();
-                        $('body').css('background','none');
-                        Player.play({url:'http://yama.scts.tv/online/streaming/K/I/kiss_x_sis_12461_12473_215_12471_12473_2010_2/%5BYousei-raws%5D%20KissXSis%2001%20%5BBDrip%201920x1080%20x264%20FLAC%5D.mkv.mp4'})
                     })
-//                DataProvider.getBestsellers(cb);
-//                DataProvider.getGenres(cb);
-//                DataProvider.getMovie(3590, cb);
                 });
             })
         </script>
@@ -194,8 +236,9 @@
             }
             body {
                 background: linear-gradient(210deg, #192342 0%,#6274BB 32%,#243C6E 64%,#03123F 100%);
-                font-family: OpenSansLight serif;
+                font-family: OpenSansLight;
                 height: 100vh;
+                position: relative;
             }
             .container-fluid {
                 padding-right: 1%;
@@ -218,13 +261,14 @@
                 font-size: 2vh;
                 border-top: 1px solid rgba(61, 100, 202, 0.3);
                 border-bottom: 1px solid rgba(25, 56, 113, 0.3);
+                border-right: 5px solid transparent;
                 background-color: rgba(255,255,255,0);
                 color: #fff;
             }
-            .nav.nav-pills.nav-stacked li:hover{
+            .nav.nav-pills.nav-stacked li:hover, .nav.nav-pills.nav-stacked li.focus, .nav.nav-pills.nav-stacked li:focus{
                 background-color: rgba(255,255,255,0.2);
                 border-right: 5px solid red;
-                transition: border-right 0.5s ease-in, background-color 0.2s ease-out;
+                transition: border-right 0.2s linear, background-color 0.2s linear;
             }
             .nav > li > a {
                 color: #fff;
@@ -251,10 +295,20 @@
                 position: relative;
                 height: 85vh;
                 display: block;
+                transition: 0.5s ease-out;
+            }
+            .movies-stack.moving-up{
+                transform: translate(0,85vh);
+                opacity: 0;
+            }
+            .movies-stack.moving-down{
+                transform: translate(0,-85vh);
+                opacity: 0;
             }
             .movies-stack > div {
                 cursor: pointer;
-                display: inline-block;
+                display: block;
+                float: left;
                 margin-right: 1.98%;
                 width: 22.7%;
                 overflow: hidden;
@@ -264,9 +318,10 @@
                 border-top: 3px solid transparent;
                 border-bottom: 3px solid transparent;
             }
-            .movies-stack > div:hover {
+            .movies-stack > div:hover, .movies-stack > div.focus {
                 border-top: 3px solid red;
                 border-bottom: 3px solid red;
+                transform: scale(1.1,1.1);
                 transition: border 0.5s ease;
             }
             .movies-stack > div >img.img-thumbnail{
@@ -302,16 +357,16 @@
         <div class="wrap">
             <div class="container-fluid layout">
                 <div class="row top-line"></div>
-                <div class="col-lg-3">
+                <div class="col-lg-2">
                     <div class="row">
                         <ul class="nav nav-pills nav-stacked">
-                          <li role="presentation"><a href="#">Home</a></li>
-                          <li role="presentation"><a href="#">Profile</a></li>
-                          <li role="presentation"><a href="#">Messages</a></li>
-                          <li role="presentation"><a href="#">Home</a></li>
-                          <li role="presentation"><a href="#">Profile</a></li>
-                          <li role="presentation"><a href="#">Messages</a></li>
-                          <li role="presentation"><a href="#">Messages</a></li>
+                          <li class="nav-item menu-item" role="presentation"><a href="#42">Боевик</a></li>
+                          <li class="nav-item menu-item" role="presentation"><a href="#33">Комедии</a></li>
+                          <li class="nav-item menu-item" role="presentation"><a href="#35">Мультфильмы</a></li>
+                          <li class="nav-item menu-item" role="presentation"><a href="#39">Драма</a></li>
+                          <li class="nav-item menu-item" role="presentation"><a href="#32">Ужасы</a></li>
+                          <!--<li class="nav-item menu-item" role="presentation"><a href="#43">Документальное</a></li>-->
+                          <!--<li class="nav-item menu-item" role="presentation"><a href="#34">Аниме</a></li>-->
                         </ul>
                     </div>
                     <div class="clearfix"></div>
@@ -320,7 +375,7 @@
                         <span class="glyphicon glyphicon-search form-control-feedback"></span>
                     </div>
                 </div>
-                <div class="col-lg-9">
+                <div class="col-lg-10">
                     <div class="row movies-stack">
 
                     </div>
