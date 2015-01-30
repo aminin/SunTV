@@ -60,7 +60,38 @@
         </script>
 
         <script type="text/lodash-template" id="ltpl-movie-single">
-
+            <div class="main">
+                <div class="title">
+                    <span class="glyphicon glyphicon-arrow-left nav-item return-to-list"></span>&nbsp;&nbsp;&nbsp;
+                    <h1>{{name}}</h1>
+                </div>
+                <img class="poster" src="{{covers[0].original}}"/>
+                <div class="description">
+                    Год: {{year}}<br/>
+                    Страна: {{countries.join(', ')}}<br/>
+                    Режиссер: {{directors.join(', ')}}<br/><br/>
+                    {{description}}
+                </div>
+                <div class="clearfix">&nbsp;</div>
+            </div>
+            <div class="navs">
+                <div class="ratings">
+                    {% if(typeof rating_imdb_value != 'undefined' && rating_imdb_value != '0') { %}
+                    <span>IMDB: {{rating_imdb_value}}</span>
+                    {% } %}
+                    <span><span class="glyphicon glyphicon-heart"></span> {{hit}}</span>
+                </div>
+                <div class="menu">
+                    <div class="play-block nav-item" data-stream-link="{{stream}}">
+                        <span class="glyphicon glyphicon-play"></span><br/>
+                        Смотреть
+                    </div>
+                    <div class="clearfix">&nbsp;</div>
+                    <!--<div class="return-block nav-item menu-item">-->
+                        <!--<span class="glyphicon glyphicon-backward"></span>-->
+                    <!--</div>-->
+                </div>
+            </div>
         </script>
         
         <script type="text/javascript">
@@ -74,11 +105,11 @@
                     data.action = [this.requestActions.getCatalogQ];
                     data.genre = [filter.genre] || undefined;
                     data.offset = [filter.offset] || [0];
-                    data.size = [filter.size] || [12];
+                    data.size = [filter.size] || [12]
                     data.filterStreamingOnly = [filter.filterStreamingOnly] || undefined;
                     this.request(data, cb);
                 },
-                getMovie:function(id, cb){
+                getMovie: function(id, cb){
                     var data = {};
                     data.action = [this.requestActions.getMovie];
                     data.movie_id = [id];
@@ -127,33 +158,62 @@
                     filter.size = size;
                     filter.filterStreamingOnly = true;
                     DataProvider.getCatalog(filter, this._renderMoviesListData);
+                    $('.scene > div:not(.movies-stack)').hide();
+                    $('.scene .movies-stack').show();
+                    $$nav.on();
                 },
                 showMovieInfo:function(id){
                     DataProvider.getMovie(id, function(data){
-                        console.log(JSON.parse(data.replace(/JsHttpRequest.dataReady\((.+)\)/, '$1')));
-                    });
-                },
-                playMovie:function(id){
-                    DataProvider.getMovie(id, function(data){
                         data = JSON.parse(data.replace(/JsHttpRequest.dataReady\((.+)\)/, '$1'));
                         console.log(data);
-                        files = data.js[0].response.movie.files;
-                        var streams = [];
-                        for(var i = 0; i < files.length; i++){
-                            if(typeof files[i].links.streams == 'object'){
-                                for(str in files[i].links.streams){
-                                    if(str != undefined){
-                                        streams.push(files[i].links.streams[str])
+                        movie = data.js[0].response.movie;
+                        if(movie != undefined){
+                            files = movie.files;
+                            var streams = [];
+                            for(var i = 0; i < files.length; i++){
+                                if(typeof files[i].links.streams == 'object'){
+                                    for(str in files[i].links.streams){
+                                        if(str != undefined){
+                                            streams.push(files[i].links.streams[str])
+                                        }
                                     }
                                 }
                             }
+                            movie.stream = streams.pop();
+                            movie.covers[0].original = DataProvider.remoteHost + movie.covers[0].original;
+                            movieInfoHtml = (_.template($("script#ltpl-movie-single").text()))(movie);
+                            $('.movie-info').html(movieInfoHtml);
+//                            $('.scene > div:not(.movie-info)').hide();
+                            $('.scene .movie-info').show();
+                            $$nav.on($('.movie-info'));
                         }
-                        console.log(streams);
-                        $('.wrap').hide();
-                        $('#smart_player').show();
-                        $('body').css('background','transparent');
-                        Player.play({url:streams[streams.length-1],type:'vod'});
                     });
+                },
+                playMovie:function(url/*id*/){
+                    $('.wrap').hide();
+                    $('#smart_player').show();
+                    $('body').css('background','transparent');
+                    Player.play({url:url,type:'vod'});
+//                    DataProvider.getMovie(id, function(data){
+//                        data = JSON.parse(data.replace(/JsHttpRequest.dataReady\((.+)\)/, '$1'));
+//                        console.log(data);
+//                        files = data.js[0].response.movie.files;
+//                        var streams = [];
+//                        for(var i = 0; i < files.length; i++){
+//                            if(typeof files[i].links.streams == 'object'){
+//                                for(str in files[i].links.streams){
+//                                    if(str != undefined){
+//                                        streams.push(files[i].links.streams[str])
+//                                    }
+//                                }
+//                            }
+//                        }
+//                        console.log(streams);
+//                        $('.wrap').hide();
+//                        $('#smart_player').show();
+//                        $('body').css('background','transparent');
+//                        Player.play({url:streams[streams.length-1],type:'vod'});
+//                    });
                 },
                 stopMovie:function(){
                     Player.stop();
@@ -193,12 +253,21 @@
                     var offset = 0;
                     var genre = undefined;
                     var elsForPage = 12;
+
                     Controller.showMoviesList(genre, offset, elsForPage);
 
                     $('.movies-stack').delegate('div.movie-block','click',function(ev){
                         var id = $(ev.currentTarget).attr('data-movie-id');
                         console.log(id);
-                        Controller.playMovie(id);
+                        Controller.showMovieInfo(id);
+                    });
+                    $('.movie-info').delegate('.play-block','click', function(ev){
+                        var url = $(ev.currentTarget).attr('data-stream-link');
+                        console.log(url);
+                        Controller.playMovie(url);
+                    });
+                    $('.movie-info').delegate('.return-to-list','click', function(ev){
+                        Controller.showMoviesList(genre, offset, elsForPage);
                     });
                     $('.movies-stack').delegate('div.movie-block', 'nav_key:up nav_key:down', function(ev){
                         var el = ev.currentTarget;
@@ -217,7 +286,7 @@
                             Controller.showMoviesList(genre, offset, elsForPage);
 
                         }
-                    })
+                    });
                     $(document.body).on('nav_key:red',function(evy){
                         Controller.stopMovie();
                     });
@@ -291,6 +360,8 @@
             .search-box {
                 position:relative;
             }
+
+            /*MOVIES-LIST*/
             .movies-stack {
                 position: relative;
                 height: 85vh;
@@ -347,6 +418,61 @@
             .top-line {
                 height: 15vh;
             }
+
+            /*SINGLE MOVIE BLOCK*/
+            .movie-info {
+                position: absolute;
+                top: 2%;
+                width: 92%;
+                background: rgba(16,16,16,0.98);
+                color: #eee;
+                padding: 2%;
+            }
+            img.poster {
+                float: left;
+                width: 29vh;
+                margin: 2vh;
+                margin-left: 0;
+            }
+            .movie-info .main .title span.glyphicon{
+                font-size: 160%;
+                padding: 1%;
+            }
+            .movie-info .main .title span.glyphicon.focus, .movie-info .main .title span.glyphicon:focus{
+                background: rgba(227,227,227,0.4);
+            }
+            .movie-info .main .title h1 {
+                display: inline-block;
+                margin-top: -1%;
+                font-size: 220%;
+            }
+            .movie-info .main .title {
+                border-bottom: 1px solid rgba(255,255,255,0.3);
+            }
+            .movie-info .main .description{
+                padding: 2%;
+            }
+            .movie-info .navs .ratings{
+                margin-left: 33vh;
+                font-size: 180%;
+                margin-top: -1.8em;
+            }
+            .movie-info .navs .menu {
+                margin-top: 1%;
+                border-top: 1px solid rgba(255,255,255,0.3);
+                border-bottom: 1px solid rgba(255,255,255,0.3);
+                font-size: 220%;
+            }
+            .movie-info .navs .play-block{
+                text-align:center;
+                float: left;
+                padding: 1%;
+            }
+            .movie-info .navs .play-block.focus, .movie-info .navs .play-block:focus{
+                background: rgba(227,227,227,0.4);
+            }
+            .movie-info .return-block{}
+
             #smart_player {
                 position: absolute;
                 z-index: 10;
@@ -375,8 +501,11 @@
                         <span class="glyphicon glyphicon-search form-control-feedback"></span>
                     </div>
                 </div>
-                <div class="col-lg-10">
+                <div class="col-lg-10 scene">
                     <div class="row movies-stack">
+
+                    </div>
+                    <div class="movie-info">
 
                     </div>
                 </div>
