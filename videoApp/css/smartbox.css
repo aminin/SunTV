@@ -37,7 +37,7 @@
 .shift_icon{background-position:-36px -4px;margin-top:6px;margin-right:4px}
 .shift_active .kbtn.shift{color:#1295e4}
 .shift_active .kbtn{text-transform:uppercase}
-#keyboard_overlay{display:none;position:absolute;left:0;top:0;width:1280px;height:720px;z-index:20}
+#keyboard_overlay{display:none;position:absolute;left:0;top:0;width:1920px;height:1080px;z-index:20}
 #keyboard_popup{position:absolute;z-index:50;display:block;left:200px;top:200px;margin:0 0 0 -5px}
 .num_wrap{width:226px}
 .num_wrap .kbtn,.num_wrap .kbtn.complete{width:65px}

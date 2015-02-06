@@ -228,8 +228,7 @@
             SB.ready(function(){
                 $$nav.on();
                 $$legend.show();
-                /*Player.play();
-                $('#smart_player').hide();*/
+                Player.play();
                 $(function(){
                     var offset = 0;
                     var genre = undefined;
@@ -331,12 +330,22 @@
             }
             * {
                 outline: none !important;
-                background: transparent;
                 /*border: 1px #fff solid;*/
                 /*margin: 1px;*/
             }
             body {
-                background: #737373;
+                background: linear-gradient(
+                        210deg,
+                        #192342 0%,
+                        #0A112D 12%,
+                        #101E54 22%,
+                        #224693 44%,
+                        #1B3159 54%,
+                        #132451 74%,
+                        #02092D 87%,
+                        #05070F 100%
+                );
+                font-family: OpenSansLight;
                 height: 100vh;
                 position: relative;
                 overflow: hidden;
@@ -590,7 +599,7 @@
                     <div class="row movies-stack">
 
                     </div>
-                    <div class="movie-info" style="display:none;">
+                    <div class="movie-info">
 
                     </div>
                 </div>
