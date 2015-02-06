@@ -87,14 +87,12 @@
                         Смотреть
                     </div>
                     <div class="clearfix">&nbsp;</div>
-                    <!--<div class="return-block nav-item menu-item">-->
-                        <!--<span class="glyphicon glyphicon-backward"></span>-->
-                    <!--</div>-->
                 </div>
             </div>
         </script>
         
         <script type="text/javascript">
+
             _.templateSettings.interpolate = /\{\{([\s\S]+?)\}\}/g;
             _.templateSettings.evaluate = /\{%([\s\S]+?)%\}/g;
 
@@ -106,7 +104,10 @@
                     data.genre = [filter.genre] || undefined;
                     data.offset = [filter.offset] || [0];
                     data.size = [filter.size] || [12]
+                    data.searchString = [filter.searchString] || undefined;
                     data.filterStreamingOnly = [filter.filterStreamingOnly] || undefined;
+                    data.excludeSerials = [filter.excludeSerials] || undefined;
+                    data.excludeAnime = [filter.excludeAnime] || undefined;
                     this.request(data, cb);
                 },
                 getMovie: function(id, cb){
@@ -128,7 +129,7 @@
                 requestParams:{
                     type:"POST",
                     url: "http://online.scts.tv/api.php?format=ajax",
-                    contentType:'application/octet-stream; charser=utf-8',
+                    contentType:'application/octet-stream; charset=utf-8',
                     crossDomain:true,
                     data:null,
                     success:function(response){}
@@ -149,76 +150,36 @@
             };
 
             var Controller = {
-                actions: [this.showMoviesList, this.showMovieInfo, this.playMovie],
-                currentAction: this.showMoviesList,
-                showMoviesList:function(genre, offset, size){
+                showMoviesList:function(genre, offset, size, searchString){
                     var filter = {};
                     filter.genre = genre;
                     filter.offset = offset;
                     filter.size = size;
+                    filter.searchString = searchString || undefined;
                     filter.filterStreamingOnly = true;
+                    filter.excludeSerials = (genre != 37) ? true : undefined;
                     DataProvider.getCatalog(filter, this._renderMoviesListData);
                     $('.scene > div:not(.movies-stack)').hide();
                     $('.scene .movies-stack').show();
-                    $$nav.on();
                 },
                 showMovieInfo:function(id){
-                    DataProvider.getMovie(id, function(data){
-                        data = JSON.parse(data.replace(/JsHttpRequest.dataReady\((.+)\)/, '$1'));
-                        console.log(data);
-                        movie = data.js[0].response.movie;
-                        if(movie != undefined){
-                            files = movie.files;
-                            var streams = [];
-                            for(var i = 0; i < files.length; i++){
-                                if(typeof files[i].links.streams == 'object'){
-                                    for(str in files[i].links.streams){
-                                        if(str != undefined){
-                                            streams.push(files[i].links.streams[str])
-                                        }
-                                    }
-                                }
-                            }
-                            movie.stream = streams.pop();
-                            movie.covers[0].original = DataProvider.remoteHost + movie.covers[0].original;
-                            movieInfoHtml = (_.template($("script#ltpl-movie-single").text()))(movie);
-                            $('.movie-info').html(movieInfoHtml);
-//                            $('.scene > div:not(.movie-info)').hide();
-                            $('.scene .movie-info').show();
-                            $$nav.on($('.movie-info'));
-                        }
-                    });
+                    DataProvider.getMovie(id, this._renderMovieInfo);
                 },
-                playMovie:function(url/*id*/){
+                hideMovieInfo:function(){
+                    $('.scene > div:not(.movies-stack)').hide();
+                    $('.scene .movies-stack').show();
+                    $$nav.on($(document.body),$('.movies-stack > div:nth-child(1)'));
+                },
+                playMovie:function(url){
                     $('.wrap').hide();
                     $('#smart_player').show();
                     $('body').css('background','transparent');
                     Player.play({url:url,type:'vod'});
-//                    DataProvider.getMovie(id, function(data){
-//                        data = JSON.parse(data.replace(/JsHttpRequest.dataReady\((.+)\)/, '$1'));
-//                        console.log(data);
-//                        files = data.js[0].response.movie.files;
-//                        var streams = [];
-//                        for(var i = 0; i < files.length; i++){
-//                            if(typeof files[i].links.streams == 'object'){
-//                                for(str in files[i].links.streams){
-//                                    if(str != undefined){
-//                                        streams.push(files[i].links.streams[str])
-//                                    }
-//                                }
-//                            }
-//                        }
-//                        console.log(streams);
-//                        $('.wrap').hide();
-//                        $('#smart_player').show();
-//                        $('body').css('background','transparent');
-//                        Player.play({url:streams[streams.length-1],type:'vod'});
-//                    });
                 },
                 stopMovie:function(){
                     Player.stop();
                     $('#smart_player').hide();
-                    $('body').css('background','linear-gradient(210deg, #192342 0%,#6274BB 32%,#243C6E 64%,#03123F 100%)');
+                    $('body').css('background','linear-gradient(210deg, #192342 0%,#0A112D 12%, #101E54 22%,#224693 44%,#1B3159 54%,#132451 74%,#02092D 87%,#05070F 100%)');
                     $('.wrap').show();
                 },
                 _renderMoviesListData:function(data){
@@ -231,20 +192,39 @@
                             movies[i].originalCover = DataProvider.remoteHost + movies[i].originalCover;
                             html = html + (_.template($('script#ltpl-movie').text()))(movies[i]);
                         }
-//                        parentBlock = $('.movies-stack').parent();
-//
-//                        $('.movies-stack').removeClass('.movies-stack').remove();
-//                        parentBlock.appendChild('<div class="movies-stack-append"></div>');
-//                        $('.movies-stack-append').html(html).removeClass('.movies-stack-append').addClass('.movies-stack');
-//
-//                        parentBlock.prependChild('<div class="movies-stack-prepend"></div>');
-//                        $('.movies-stack-prepend').html(html).removeClass('.movies-stack-prepend').addClass('.movies-stack');
-
                         $('.movies-stack').html(html);
+                        $$nav.on();
                         $$nav.current($('.movies-stack').find($$nav.area_selector).filter(':visible').eq(0));
+
                     }
+                },
+                _renderMovieInfo:function(data){
+                    data = JSON.parse(data.replace(/JsHttpRequest.dataReady\((.+)\)/, '$1'));
+                    console.log(data);
+                    movie = data.js[0].response.movie;
+                    if(movie == undefined){
+                        return false;
+                    }
+                    files = movie.files;
+                    var streams = [];
+                    for(var i = 0; i < files.length; i++){
+                        if(typeof files[i].links.streams == 'object'){
+                            for(str in files[i].links.streams){
+                                if(str != undefined){
+                                    streams.push(files[i].links.streams[str])
+                                }
+                            }
+                        }
+                    }
+                    movie.stream = streams.pop();
+                    movie.covers[0].original = DataProvider.remoteHost + movie.covers[0].original;
+                    movieInfoHtml = (_.template($("script#ltpl-movie-single").text()))(movie);
+                    $('.movie-info').html(movieInfoHtml);
+                    $('.scene .movie-info').show();
+                    $$nav.on($('.movie-info'));
                 }
             };
+
             SB.ready(function(){
                 $$nav.on();
                 $$legend.show();
@@ -253,9 +233,19 @@
                     var offset = 0;
                     var genre = undefined;
                     var elsForPage = 12;
+                    var searchString = undefined;
+                    Controller.showMoviesList(genre, offset, elsForPage, searchString);
 
-                    Controller.showMoviesList(genre, offset, elsForPage);
-
+                    $('.menu-items').delegate('li.nav-item','click',function(ev){
+                        var group_id = $(ev.currentTarget).attr('data-group-id');
+                        $(ev.currentTarget).addClass('current');
+                        $(ev.currentTarget).siblings().removeClass('current');
+                        genre = group_id;
+                        offset = 0;
+                        console.log(group_id);
+                        $$nav.off();
+                        Controller.showMoviesList(genre,offset,elsForPage);
+                    });
                     $('.movies-stack').delegate('div.movie-block','click',function(ev){
                         var id = $(ev.currentTarget).attr('data-movie-id');
                         console.log(id);
@@ -267,7 +257,7 @@
                         Controller.playMovie(url);
                     });
                     $('.movie-info').delegate('.return-to-list','click', function(ev){
-                        Controller.showMoviesList(genre, offset, elsForPage);
+                        Controller.hideMovieInfo();
                     });
                     $('.movies-stack').delegate('div.movie-block', 'nav_key:up nav_key:down', function(ev){
                         var el = ev.currentTarget;
@@ -278,20 +268,47 @@
                         if(!nextSibling){
                             if(dir == 'up'){
                                 offset -= elsForPage;
-                                if(offset < 0) offset = 0;
+                                if(offset <= 0) {
+                                    offset = 0;
+                                    $('.arrows .glyphicon.glyphicon-arrow-up').removeClass('waypoint');
+                                }
                             }else if(dir == 'down'){
                                 offset += elsForPage;
+                                $('.arrows .glyphicon.glyphicon-arrow-up').addClass('waypoint');
                                 //TODO: upper bound
                             }
+                            $$nav.off();
                             Controller.showMoviesList(genre, offset, elsForPage);
-
                         }
+                    });
+
+                    $('.search-box #movie-search').SBInput({
+                        keyboard:{
+                            type:'fulltext_ru',
+                            firstLayout:'ru'
+                        }
+                    });
+                    $('.search-box #movie-search').on('keyboard_complete', function(ev){
+                        searchString = encodeURIComponent($(ev.currentTarget).val());
+                        Controller.showMoviesList(0, 0, 12, searchString);
                     });
                     $(document.body).on('nav_key:red',function(evy){
                         Controller.stopMovie();
                     });
-                    $(document.body).on('nav_key:green',function(evy){
-                    })
+
+                    /*Player Controls*/
+                    $(document.body).on('nav_key:play',function(evy){
+                        Player.resume();
+                    });
+                    $(document.body).on('nav_key:pause',function(evy){
+                        Player.pause();
+                    });
+                    $(document.body).on('nav_key:ff',function(evy){
+                        Player.seek(Player.videoInfo.currentTime+((Player.videoInfo.duration/100)*5));
+                    });
+                    $(document.body).on('nav_key:rw',function(evy){
+                        Player.seek(Player.videoInfo.currentTime-((Player.videoInfo.duration/100)*5));
+                    });
                 });
             })
         </script>
@@ -304,10 +321,21 @@
                 outline: none !important;
             }
             body {
-                background: linear-gradient(210deg, #192342 0%,#6274BB 32%,#243C6E 64%,#03123F 100%);
+                background: linear-gradient(
+                        210deg,
+                        #192342 0%,
+                        #0A112D 12%,
+                        #101E54 22%,
+                        #224693 44%,
+                        #1B3159 54%,
+                        #132451 74%,
+                        #02092D 87%,
+                        #05070F 100%
+                );
                 font-family: OpenSansLight;
                 height: 100vh;
                 position: relative;
+                overflow: hidden;
             }
             .container-fluid {
                 padding-right: 1%;
@@ -334,15 +362,20 @@
                 background-color: rgba(255,255,255,0);
                 color: #fff;
             }
-            .nav.nav-pills.nav-stacked li:hover, .nav.nav-pills.nav-stacked li.focus, .nav.nav-pills.nav-stacked li:focus{
+            .nav.nav-pills.nav-stacked li.current{
+                background-color: rgba(255,255,255,0.3);
+                border-right: none;
+                transition: border-right 0.2s linear, background-color 0.2s linear;
+            }
+            .nav.nav-pills.nav-stacked li.focus, .nav.nav-pills.nav-stacked li:focus{
                 background-color: rgba(255,255,255,0.2);
-                border-right: 5px solid red;
+                border-left: 4px solid red;
                 transition: border-right 0.2s linear, background-color 0.2s linear;
             }
             .nav > li > a {
                 color: #fff;
             }
-            .nav > li > a:hover, .nav > li > a:focus {
+            .nav > li > a:focus, .nav > li > a:hover {
                 background-color: transparent;
             }
             .nav > li:first-child{
@@ -386,14 +419,14 @@
                 height: 25vh;
                 position: relative;
                 margin-bottom: 1vh;
-                border-top: 3px solid transparent;
-                border-bottom: 3px solid transparent;
+                /*border-top: 3px solid transparent;*/
+                /*border-bottom: 3px solid transparent;*/
             }
-            .movies-stack > div:hover, .movies-stack > div.focus {
-                border-top: 3px solid red;
-                border-bottom: 3px solid red;
-                transform: scale(1.1,1.1);
-                transition: border 0.5s ease;
+            .movies-stack > div.focus{
+                box-shadow: red 0px 0px 0px 4px;
+            }
+            .movies-stack > div.focus > div{
+                /*border-bottom: 5px solid red;*/
             }
             .movies-stack > div >img.img-thumbnail{
                 width: 100%;
@@ -438,13 +471,17 @@
                 font-size: 160%;
                 padding: 1%;
             }
-            .movie-info .main .title span.glyphicon.focus, .movie-info .main .title span.glyphicon:focus{
+            .movie-info .main .title span.glyphicon.focus,
+            .movie-info .main .title span.glyphicon:focus
+            .movie-info .main .title span.glyphicon:hover{
                 background: rgba(227,227,227,0.4);
             }
             .movie-info .main .title h1 {
                 display: inline-block;
                 margin-top: -1%;
+                margin-bottom: 7px;
                 font-size: 220%;
+
             }
             .movie-info .main .title {
                 border-bottom: 1px solid rgba(255,255,255,0.3);
@@ -468,15 +505,51 @@
                 float: left;
                 padding: 1%;
             }
-            .movie-info .navs .play-block.focus, .movie-info .navs .play-block:focus{
+            .movie-info .navs .play-block.focus,
+            .movie-info .navs .play-block:hover,
+            .movie-info .navs .play-block:focus{
                 background: rgba(227,227,227,0.4);
             }
             .movie-info .return-block{}
-
             #smart_player {
                 position: absolute;
                 z-index: 10;
             }
+            .emul_voice_helpbar_wrap{
+                display: none !important;
+            }
+            .smart_input-container{
+                width:100%;
+            }
+            .smart_input-wrap{
+                margin-top: -8px;
+                margin-left: -14px;
+                height: 36px;
+                margin-right: -14px;
+            }
+            .focus .smart_input-wrap{
+                border-width:2px;
+                border-color: red;
+            }
+            .arrows {
+                position: absolute;
+                display: block !important;
+                z-index: 10;
+                right: 4%;
+                font-size: 300%;
+                color: rgba(227,227,227,0.5);
+            }
+            .arrows .glyphicon {
+                position: absolute;
+            }
+            .arrows .glyphicon.waypoint{
+                color: rgba(227,127,127,0.5);
+            }
+            .arrows .glyphicon-arrow-up{}
+            .arrows .glyphicon-arrow-down{
+                top: 71vh;
+            }
+
         </style>
     </head>
     <body>
@@ -485,23 +558,28 @@
                 <div class="row top-line"></div>
                 <div class="col-lg-2">
                     <div class="row">
-                        <ul class="nav nav-pills nav-stacked">
-                          <li class="nav-item menu-item" role="presentation"><a href="#42">Боевик</a></li>
-                          <li class="nav-item menu-item" role="presentation"><a href="#33">Комедии</a></li>
-                          <li class="nav-item menu-item" role="presentation"><a href="#35">Мультфильмы</a></li>
-                          <li class="nav-item menu-item" role="presentation"><a href="#39">Драма</a></li>
-                          <li class="nav-item menu-item" role="presentation"><a href="#32">Ужасы</a></li>
-                          <!--<li class="nav-item menu-item" role="presentation"><a href="#43">Документальное</a></li>-->
-                          <!--<li class="nav-item menu-item" role="presentation"><a href="#34">Аниме</a></li>-->
+                        <ul class="nav nav-pills nav-stacked menu-items">
+                          <li class="nav-item menu-item current" data-group-id="0"><a>Все фильмы</a></li>
+                          <li class="nav-item menu-item" data-group-id="42"><a>Боевик</a></li>
+                          <li class="nav-item menu-item" data-group-id="33"><a>Комедии</a></li>
+                          <li class="nav-item menu-item" data-group-id="35"><a>Мультфильмы</a></li>
+                          <li class="nav-item menu-item" data-group-id="39"><a>Драма</a></li>
+                          <li class="nav-item menu-item" data-group-id="32"><a>Ужасы</a></li>
+                          <li class="nav-item menu-item" data-group-id="34"><a>Аниме</a></li>
+                          <li class="nav-item menu-item" data-group-id="37"><a>Сериалы</a></li>
                         </ul>
                     </div>
                     <div class="clearfix"></div>
                     <div class="row form-group search-box">
-                        <input type="text" class="form-control" id="movieSearch">
+                        <input type="text" class="form-control nav-item" id="movie-search">
                         <span class="glyphicon glyphicon-search form-control-feedback"></span>
                     </div>
                 </div>
                 <div class="col-lg-10 scene">
+                    <div class="arrows">
+                        <span class="glyphicon glyphicon-arrow-up"></span>
+                        <span class="glyphicon glyphicon-arrow-down waypoint"></span>
+                    </div>
                     <div class="row movies-stack">
 
                     </div>

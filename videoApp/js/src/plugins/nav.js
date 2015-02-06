@@ -237,6 +237,7 @@
 
         this.$container = container ? $(container) : $body;
 
+        /*OH NO WE KILLED MOUSE REACTION*/
         if ( SB.platform != 'philips' ) {
           this.$container.on('mouseenter.nav', this.area_selector, function ( e ) {
             if ( !$(this).is(self.phantom_selector) ) {
