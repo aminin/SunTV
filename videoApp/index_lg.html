@@ -1,0 +1,602 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html lang="ru">
+    <head>
+        <title>Hello</title>
+        <link rel="stylesheet" href="css/bootstrap.css"/>
+        <link rel="stylesheet" href="css/legend.css"/>
+        <link rel="stylesheet" href="css/smartbox.css"/>
+        <!-- <link rel="stylesheet" href="css/style.css"/> -->
+
+        <script type="text/javascript" src="js/src/libs/jquery-1.10.2.min.js"></script>
+        <script type="text/javascript" src="js/src/libs/lodash.compat.min.js"></script>
+        <script type="text/javascript" src="js/src/libs/event_emitter.js"></script>
+        <script type="text/javascript" src="js/bootstrap.js"></script>
+
+        <script type="text/javascript" src="js/src/sb.js"></script> 
+        <script type="text/javascript" src="js/src/sb.platform.js"></script> 
+
+        <script type="text/javascript" src="js/src/platforms/_browser/player.browser.js"></script> 
+        <script type="text/javascript" src="js/src/platforms/_browser/sb.platform.browser.js"></script> 
+        <script type="text/javascript" src="js/src/platforms/_browser/voicelink.browser.js"></script> 
+        
+        <script type="text/javascript" src="js/src/platforms/dune/player.dune.js"></script> 
+        <script type="text/javascript" src="js/src/platforms/dune/sb.platform.dune.js"></script> 
+
+        <script type="text/javascript" src="js/src/platforms/lg/player.lg.js"></script> 
+        <script type="text/javascript" src="js/src/platforms/lg/sb.platform.lg.js"></script> 
+        
+        <script type="text/javascript" src="js/src/platforms/mag/player.mag.js"></script> 
+        <script type="text/javascript" src="js/src/platforms/mag/sb.platform.mag.js"></script> 
+
+        <script type="text/javascript" src="js/src/platforms/philips/player.philips.js"></script> 
+        <script type="text/javascript" src="js/src/platforms/philips/sb.platform.philips.js"></script> 
+
+        <script type="text/javascript" src="js/src/platforms/samsung/localstorage.js"></script> 
+        <script type="text/javascript" src="js/src/platforms/samsung/player.samsung.js"></script> 
+        <script type="text/javascript" src="js/src/platforms/samsung/sb.platform.samsung.js"></script> 
+        <script type="text/javascript" src="js/src/platforms/samsung/voicelink.samsung.js"></script> 
+        
+        <script type="text/javascript" src="js/src/plugins/input.js"></script> 
+        <script type="text/javascript" src="js/src/plugins/keyboard.js"></script> 
+        <script type="text/javascript" src="js/src/plugins/legend.js"></script> 
+        <script type="text/javascript" src="js/src/plugins/log.js"></script> 
+        <script type="text/javascript" src="js/src/plugins/nav.js"></script> 
+        <script type="text/javascript" src="js/src/plugins/player.js"></script> 
+        <script type="text/javascript" src="js/src/plugins/voicelink.js"></script>
+
+        <script type="text/lodash-template" id="ltpl-movie">
+            <div class="nav-item menu-item movie-block" data-movie-id="{{movie_id}}">
+                <img src="{{originalCover}}" alt="" class="img-responsive img-thumbnail">
+                <div>
+                    <h1>{{name}}</h1>
+                    {% if(typeof rating_imdb_value != 'undefined' && rating_imdb_value != '0') { %}
+                        <span class="pull-left">IMDB: {{rating_imdb_value}}</span>
+                    {% } %}
+                    <span class="pull-right">{{hit}} <span class="glyphicon glyphicon-heart"></span></span>
+                    <div class="clearfix"></div>
+                </div>
+            </div>
+        </script>
+
+        <script type="text/lodash-template" id="ltpl-movie-single">
+            <div class="main">
+                <div class="title">
+                    <span class="glyphicon glyphicon-arrow-left nav-item return-to-list"></span>&nbsp;&nbsp;&nbsp;
+                    <h1>{{name}}</h1>
+                </div>
+                <img class="poster" src="{{covers[0].original}}"/>
+                <div class="description">
+                    Год: {{year}}<br/>
+                    Страна: {{countries.join(', ')}}<br/>
+                    Режиссер: {{directors.join(', ')}}<br/><br/>
+                    {{description}}
+                </div>
+                <div class="clearfix">&nbsp;</div>
+            </div>
+            <div class="navs">
+                <div class="ratings">
+                    {% if(typeof rating_imdb_value != 'undefined' && rating_imdb_value != '0') { %}
+                    <span>IMDB: {{rating_imdb_value}}</span>
+                    {% } %}
+                    <span><span class="glyphicon glyphicon-heart"></span> {{hit}}</span>
+                </div>
+                <div class="menu">
+                    <div class="play-block nav-item" data-stream-link="{{stream}}">
+                        <span class="glyphicon glyphicon-play"></span><br/>
+                        Смотреть
+                    </div>
+                    <div class="clearfix">&nbsp;</div>
+                </div>
+            </div>
+        </script>
+        
+        <script type="text/javascript">
+
+            _.templateSettings.interpolate = /\{\{([\s\S]+?)\}\}/g;
+            _.templateSettings.evaluate = /\{%([\s\S]+?)%\}/g;
+
+            var DataProvider = {
+                remoteHost:"http://online.scts.tv/",
+                getCatalog:function(filter, cb){
+                    var data = {};
+                    data.action = [this.requestActions.getCatalogQ];
+                    data.genre = [filter.genre] || undefined;
+                    data.offset = [filter.offset] || [0];
+                    data.size = [filter.size] || [12]
+                    data.searchString = [filter.searchString] || undefined;
+                    data.filterStreamingOnly = [filter.filterStreamingOnly] || undefined;
+                    data.excludeSerials = [filter.excludeSerials] || undefined;
+                    data.excludeAnime = [filter.excludeAnime] || undefined;
+                    this.request(data, cb);
+                },
+                getMovie: function(id, cb){
+                    var data = {};
+                    data.action = [this.requestActions.getMovie];
+                    data.movie_id = [id];
+                    this.request(data, cb);
+                },
+                getBestsellers:function(cb){
+                    var data = {};
+                    data.action = [this.requestActions.getBestsellers];
+                    this.request(data, cb);
+                },
+                getGenres:function(cb){
+                    var data = {};
+                    data.action = [this.requestActions.getGenres];
+                    this.request(data, cb);
+                },
+                requestParams:{
+                    type:"POST",
+                    url: "http://online.scts.tv/api.php?format=ajax",
+                    contentType:'application/octet-stream; charset=utf-8',
+                    crossDomain:true,
+                    data:null,
+                    success:function(response){}
+                },
+                requestActions:{
+                    getCatalog:'video.getCatalog',
+                    getCatalogQ:'video.getCatalogQ',
+                    getMovie:'videoCustom.getMovie',
+                    getBestsellers:'video.getBestsellers',
+                    getGenres:'video.getGenres'
+                },
+                request:function(data, successCb){
+                    var rp = this.requestParams;
+                    rp.data = data;
+                    rp.success = successCb;
+                    $.ajax(this.requestParams);
+                }
+            };
+
+            var Controller = {
+                showMoviesList:function(genre, offset, size, searchString){
+                    var filter = {};
+                    filter.genre = genre;
+                    filter.offset = offset;
+                    filter.size = size;
+                    filter.searchString = searchString || undefined;
+                    filter.filterStreamingOnly = true;
+                    filter.excludeSerials = (genre != 37) ? true : undefined;
+                    DataProvider.getCatalog(filter, this._renderMoviesListData);
+                    $('.scene > div:not(.movies-stack)').hide();
+                    $('.scene .movies-stack').show();
+                },
+                showMovieInfo:function(id){
+                    DataProvider.getMovie(id, this._renderMovieInfo);
+                },
+                hideMovieInfo:function(){
+                    $('.scene > div:not(.movies-stack)').hide();
+                    $('.scene .movies-stack').show();
+                    $$nav.on($(document.body), $('.movies-stack > div:nth-child(1)'));
+                },
+                playMovie:function(url){
+                    $('.wrap').hide();
+                    $('#smart_player').show();
+                    $('body').css('background','transparent');
+                    Player.play({url:url, type:'vod'});
+                },
+                stopMovie:function(){
+                    Player.stop();
+                    $('#smart_player').hide();
+                    $('body').css('background','linear-gradient(210deg, #192342 0%,#0A112D 12%, #101E54 22%,#224693 44%,#1B3159 54%,#132451 74%,#02092D 87%,#05070F 100%)');
+                    $('.wrap').show();
+                },
+                _renderMoviesListData:function(data){
+                    data = JSON.parse(data.replace(/JsHttpRequest.dataReady\((.+)\)/, '$1'));
+                    console.log(data);
+                    movies = data.js[0].response.movies;
+                    if(movies != undefined) {
+                        html = '';
+                        for (var i = 0; i < movies.length; i++) {
+                            movies[i].originalCover = DataProvider.remoteHost + movies[i].originalCover;
+                            html = html + (_.template($('script#ltpl-movie').text()))(movies[i]);
+                        }
+                        $('.movies-stack').html(html);
+                        $$nav.on();
+                        $$nav.current($('.movies-stack').find($$nav.area_selector).filter(':visible').eq(0));
+
+                    }
+                },
+                _renderMovieInfo:function(data){
+                    data = JSON.parse(data.replace(/JsHttpRequest.dataReady\((.+)\)/, '$1'));
+                    console.log(data);
+                    movie = data.js[0].response.movie;
+                    if(movie == undefined){
+                        return false;
+                    }
+                    files = movie.files;
+                    var streams = [];
+                    for(var i = 0; i < files.length; i++){
+                        if(typeof files[i].links.streams == 'object'){
+                            for(str in files[i].links.streams){
+                                if(str != undefined){
+                                    streams.push(files[i].links.streams[str])
+                                }
+                            }
+                        }
+                    }
+                    movie.stream = streams.pop();
+                    movie.covers[0].original = DataProvider.remoteHost + movie.covers[0].original;
+                    movieInfoHtml = (_.template($("script#ltpl-movie-single").text()))(movie);
+                    $('.movie-info').html(movieInfoHtml);
+                    $('.scene .movie-info').show();
+                    $$nav.on($('.movie-info'));
+                }
+            };
+
+            SB.ready(function(){
+                $$nav.on();
+                $$legend.show();
+                Player.play();
+                Player.stop();
+                $('#smart_player').hide();
+                $(function(){
+                    var offset = 0;
+                    var genre = undefined;
+                    var elsForPage = 12;
+                    var searchString = undefined;
+                    Controller.showMoviesList(genre, offset, elsForPage, searchString);
+
+                    $('.menu-items').delegate('li.nav-item','click',function(ev){
+                        var group_id = $(ev.currentTarget).attr('data-group-id');
+                        $(ev.currentTarget).addClass('current');
+                        $(ev.currentTarget).siblings().removeClass('current');
+                        genre = group_id;
+                        offset = 0;
+                        console.log(group_id);
+                        $$nav.off();
+                        Controller.showMoviesList(genre,offset,elsForPage);
+                    });
+                    $('.movies-stack').delegate('div.movie-block','click',function(ev){
+                        var id = $(ev.currentTarget).attr('data-movie-id');
+                        console.log(id);
+                        Controller.showMovieInfo(id);
+                    });
+                    $('.movie-info').delegate('.play-block','click', function(ev){
+                        var url = $(ev.currentTarget).attr('data-stream-link');
+                        console.log(url);
+                        Controller.playMovie(url);
+                    });
+                    $('.movie-info').delegate('.return-to-list','click', function(ev){
+                        Controller.hideMovieInfo();
+                    });
+                    $('.movies-stack').delegate('div.movie-block', 'nav_key:up nav_key:down', function(ev){
+                        var el = ev.currentTarget;
+                        var dir = ev.keyName;
+                        var navs = $('.movies-stack').find($$nav.area_selector).filter(':visible');
+                        var nextSibling = $$nav.findNav($(el), dir, navs);
+                        console.log(el,nextSibling,dir);
+                        if(!nextSibling){
+                            if(dir == 'up'){
+                                offset -= elsForPage;
+                                if(offset <= 0) {
+                                    offset = 0;
+                                    $('.arrows .glyphicon.glyphicon-arrow-up').removeClass('waypoint');
+                                }
+                            }else if(dir == 'down'){
+                                offset += elsForPage;
+                                $('.arrows .glyphicon.glyphicon-arrow-up').addClass('waypoint');
+                                //TODO: upper bound
+                            }
+                            $$nav.off();
+                            Controller.showMoviesList(genre, offset, elsForPage);
+                        }
+                    });
+
+
+                    $('.search-box #movie-search').SBInput({
+                        keyboard:{
+                            type:'fulltext_ru',
+                            firstLayout:'ru'
+                        }
+                    });
+                    $('.search-box #movie-search').on('keyboard_complete', function(ev){
+                        searchString = encodeURIComponent($(ev.currentTarget).val());
+                        Controller.showMoviesList(0, 0, 12, searchString);
+                    });
+                    $(document.body).on('nav_key:red',function(evy){
+                        Controller.stopMovie();
+                    });
+
+                    /*Player Controls*/
+                    $(document.body).on('nav_key:play',function(evy){
+                        Player.resume();
+                    });
+                    $(document.body).on('nav_key:pause',function(evy){
+                        Player.pause();
+                    });
+                    $(document.body).on('nav_key:ff',function(evy){
+                        Player.seek(Player.videoInfo.currentTime+((Player.videoInfo.duration/100)*5));
+                    });
+                    $(document.body).on('nav_key:rw',function(evy){
+                        Player.seek(Player.videoInfo.currentTime-((Player.videoInfo.duration/100)*5));
+                    });
+
+                    /*Debug*/
+                    $(document.body).on('nav_key:green', function(evy){
+                        var rect = document.body.getBoundingClientRect();
+                        var rect2 = document.body.getClientRects();
+                        $$log([rect.height, rect.width]);
+                        $$log([rect2.height, rect2.width]);
+                    });
+                    $(document.body).on('mousemove',function(evy){
+                        $$log([evy.clientX, evy.clientY]);
+                    });
+                });
+            })
+        </script>
+        <style type="text/css">
+            @font-face{
+                font-family: OpenSansLight;
+                src: url(fonts/OpenSans-Light.ttf);
+            }
+            * {
+                outline: none !important;
+                background: transparent;
+                /*border: 1px #fff solid;*/
+                /*margin: 1px;*/
+            }
+            body {
+                background: #737373;
+                height: 100vh;
+                position: relative;
+                overflow: hidden;
+            }
+            .container-fluid {
+                padding-right: 1%;
+                padding-left: 1%;
+            }
+            .layout .col-lg-3 {
+                padding-left: 2%;
+                padding-right: 0%;
+            }
+            .layout .row {
+                margin-right: 0;
+            }
+            .nav.nav-pills.nav-stacked{
+                margin-bottom: 6vh;
+            }
+            .nav.nav-pills.nav-stacked li {
+                margin: 0 0;
+                border-radius: 0px;
+                height: 5.7vh;
+                font-size: 2vh;
+                border-top: 1px solid rgba(61, 100, 202, 0.3);
+                border-bottom: 1px solid rgba(25, 56, 113, 0.3);
+                border-right: 5px solid transparent;
+                background-color: rgba(255,255,255,0);
+                color: #fff;
+            }
+            .nav.nav-pills.nav-stacked li.current{
+                background-color: rgba(255,255,255,0.3);
+                border-right: none;
+                transition: border-right 0.2s linear, background-color 0.2s linear;
+            }
+            .nav.nav-pills.nav-stacked li.focus, .nav.nav-pills.nav-stacked li:focus{
+                background-color: rgba(255,255,255,0.2);
+                border-left: 4px solid red;
+                transition: border-right 0.2s linear, background-color 0.2s linear;
+            }
+            .nav > li > a {
+                color: #fff;
+            }
+            .nav > li > a:focus, .nav > li > a:hover {
+                background-color: transparent;
+            }
+            .nav > li:first-child{
+                border-top: none !important;
+            }
+            .nav > li:last-child{
+                border-bottom: none !important;
+            }
+            .layout .col-lg-9{
+                padding-left: 5%;
+                height: 100%;
+                padding-right: 0;
+            }
+
+            .search-box {
+                position:relative;
+            }
+
+            /*MOVIES-LIST*/
+            .movies-stack {
+                position: relative;
+                height: 85vh;
+                display: block;
+                transition: 0.5s ease-out;
+            }
+            .movies-stack.moving-up{
+                transform: translate(0,85vh);
+                opacity: 0;
+            }
+            .movies-stack.moving-down{
+                transform: translate(0,-85vh);
+                opacity: 0;
+            }
+            .movies-stack > div {
+                cursor: pointer;
+                display: block;
+                float: left;
+                margin-right: 1.98%;
+                width: 22.7%;
+                overflow: hidden;
+                height: 25vh;
+                position: relative;
+                margin-bottom: 1vh;
+                /*border-top: 3px solid transparent;*/
+                /*border-bottom: 3px solid transparent;*/
+            }
+            .movies-stack > div.focus{
+                box-shadow: red 0px 0px 0px 4px;
+            }
+            .movies-stack > div.focus > div{
+                /*border-bottom: 5px solid red;*/
+            }
+            .movies-stack > div >img.img-thumbnail{
+                width: 100%;
+                border-radius: 0px;
+            }
+            .movies-stack > div > div {
+                background: rgba(255,255,255,0.5);
+                border-bottom:5px solid #fff;
+                position: absolute;
+                width: 100%;
+                bottom: 0px;
+                padding: 0 6% 6%;
+            }
+            .movies-stack > div h1 {
+                margin-top: 5%;
+                margin-bottom: 2%;
+                font-size: 2.28vh;
+            }
+            .movies-stack span.glyphicon.glyphicon-heart {
+                color: red;
+            }
+            .top-line {
+                height: 15vh;
+            }
+
+            /*SINGLE MOVIE BLOCK*/
+            .movie-info {
+                position: absolute;
+                top: 2%;
+                width: 92%;
+                background: rgba(16,16,16,0.98);
+                color: #eee;
+                padding: 2%;
+            }
+            img.poster {
+                float: left;
+                width: 29vh;
+                margin: 2vh;
+                margin-left: 0;
+            }
+            .movie-info .main .title span.glyphicon{
+                font-size: 160%;
+                padding: 1%;
+            }
+            .movie-info .main .title span.glyphicon.focus,
+            .movie-info .main .title span.glyphicon:focus
+            .movie-info .main .title span.glyphicon:hover{
+                background: rgba(227,227,227,0.4);
+            }
+            .movie-info .main .title h1 {
+                display: inline-block;
+                margin-top: -1%;
+                margin-bottom: 7px;
+                font-size: 220%;
+
+            }
+            .movie-info .main .title {
+                border-bottom: 1px solid rgba(255,255,255,0.3);
+            }
+            .movie-info .main .description{
+                padding: 2%;
+            }
+            .movie-info .navs .ratings{
+                margin-left: 33vh;
+                font-size: 180%;
+                margin-top: -1.8em;
+            }
+            .movie-info .navs .menu {
+                margin-top: 1%;
+                border-top: 1px solid rgba(255,255,255,0.3);
+                border-bottom: 1px solid rgba(255,255,255,0.3);
+                font-size: 220%;
+            }
+            .movie-info .navs .play-block{
+                text-align:center;
+                float: left;
+                padding: 1%;
+            }
+            .movie-info .navs .play-block.focus,
+            .movie-info .navs .play-block:hover,
+            .movie-info .navs .play-block:focus{
+                background: rgba(227,227,227,0.4);
+            }
+            .movie-info .return-block{}
+            #smart_player {
+                position: absolute;
+                z-index: 10;
+            }
+            .emul_voice_helpbar_wrap{
+                display: none !important;
+            }
+            .smart_input-container{
+                width:100%;
+            }
+            .smart_input-wrap{
+                margin-top: -8px;
+                margin-left: -14px;
+                height: 36px;
+                margin-right: -14px;
+            }
+            .focus .smart_input-wrap{
+                border-width:2px;
+                border-color: red;
+            }
+            .arrows {
+                position: absolute;
+                display: block !important;
+                z-index: 10;
+                right: 4%;
+                font-size: 300%;
+                color: rgba(227,227,227,0.5);
+            }
+            .arrows .glyphicon {
+                position: absolute;
+            }
+            .arrows .glyphicon.waypoint{
+                color: rgba(227,127,127,0.5);
+            }
+            .arrows .glyphicon-arrow-up{}
+            .arrows .glyphicon-arrow-down{
+                top: 71vh;
+            }
+
+        </style>
+    </head>
+    <body>
+        <div class="wrap">
+            <div class="container-fluid layout">
+                <div class="row top-line">
+                    MouseX: <span dir="x"></span>
+                    MouseY: <span dir="y"></span>
+                </div>
+                <div class="col-lg-2">
+                    <div class="row">
+                        <ul class="nav nav-pills nav-stacked menu-items">
+                          <li class="nav-item menu-item current" data-group-id="0"><a>Все фильмы</a></li>
+                          <li class="nav-item menu-item" data-group-id="42"><a>Боевик</a></li>
+                          <li class="nav-item menu-item" data-group-id="33"><a>Комедии</a></li>
+                          <li class="nav-item menu-item" data-group-id="35"><a>Мультфильмы</a></li>
+                          <li class="nav-item menu-item" data-group-id="39"><a>Драма</a></li>
+                          <li class="nav-item menu-item" data-group-id="32"><a>Ужасы</a></li>
+                          <li class="nav-item menu-item" data-group-id="34"><a>Аниме</a></li>
+                          <!--<li class="nav-item menu-item" data-group-id="37"><a>Сериалы</a></li>-->
+                        </ul>
+                    </div>
+                    <div class="clearfix"></div>
+                    <div class="row form-group search-box">
+                        <input type="text" class="form-control nav-item" id="movie-search">
+                        <span class="glyphicon glyphicon-search form-control-feedback"></span>
+                    </div>
+                </div>
+                <div class="col-lg-10 scene">
+                    <div class="arrows">
+                        <span class="glyphicon glyphicon-arrow-up nav-item"></span>
+                        <span class="glyphicon glyphicon-arrow-down waypoint nav-item"></span>
+                    </div>
+                    <div class="row movies-stack">
+
+                    </div>
+                    <div class="movie-info" style="display:none;">
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

@@ -228,8 +228,7 @@
             SB.ready(function(){
                 $$nav.on();
                 $$legend.show();
-                /*Player.play();
-                $('#smart_player').hide();*/
+                Player.play();
                 $(function(){
                     var offset = 0;
                     var genre = undefined;
@@ -282,6 +281,21 @@
                             Controller.showMoviesList(genre, offset, elsForPage);
                         }
                     });
+                    $('.arrows .glyphicon').on('click', function(evy){
+                        var el = evy.currentTarget;
+                       if ( $(el).hasClass('glyphicon-arrow-up') ){
+                           offset -= elsForPage;
+                           if(offset <= 0) {
+                               offset = 0;
+                               $(el).removeClass('waypoint');
+                           }
+                       }
+                       if ( $(el).hasClass('glyphicon-arrow-down') ){
+                           offset += elsForPage;
+                           $('.arrows .glyphicon.glyphicon-arrow-up').addClass('waypoint');
+                       };
+                        Controller.showMoviesList(genre, offset, elsForPage);
+                    });
 
                     $('.search-box #movie-search').SBInput({
                         keyboard:{
@@ -312,7 +326,7 @@
                     });
 
                     /*Debug*/
-                    $(document.body).on('nav_key:green', function(evy){
+                    /*$(document.body).on('nav_key:green', function(evy){
                         var rect = document.body.getBoundingClientRect();
                         var rect2 = document.body.getClientRects();
                         $$log([rect.height, rect.width]);
@@ -320,7 +334,7 @@
                     });
                     $(document.body).on('mousemove',function(evy){
                         $$log([evy.clientX, evy.clientY]);
-                    });
+                    });*/
                 });
             })
         </script>
@@ -331,12 +345,22 @@
             }
             * {
                 outline: none !important;
-                background: transparent;
                 /*border: 1px #fff solid;*/
                 /*margin: 1px;*/
             }
             body {
-                background: #737373;
+                background: linear-gradient(
+                        210deg,
+                        #192342 0%,
+                        #0A112D 12%,
+                        #101E54 22%,
+                        #224693 44%,
+                        #1B3159 54%,
+                        #132451 74%,
+                        #02092D 87%,
+                        #05070F 100%
+                );
+                font-family: OpenSansLight;
                 height: 100vh;
                 position: relative;
                 overflow: hidden;
@@ -546,12 +570,15 @@
             .arrows .glyphicon {
                 position: absolute;
             }
+            .arrows .glyphicon:hover, .arrows .glyphicon.focus{
+                background-color: rgba(255,255,255,0.3);
+            }
             .arrows .glyphicon.waypoint{
                 color: rgba(227,127,127,0.5);
             }
             .arrows .glyphicon-arrow-up{}
             .arrows .glyphicon-arrow-down{
-                top: 71vh;
+                top: 72.1vh;
             }
 
         </style>
@@ -560,8 +587,6 @@
         <div class="wrap">
             <div class="container-fluid layout">
                 <div class="row top-line">
-                    MouseX: <span dir="x"></span>
-                    MouseY: <span dir="y"></span>
                 </div>
                 <div class="col-lg-2">
                     <div class="row">
@@ -584,13 +609,13 @@
                 </div>
                 <div class="col-lg-10 scene">
                     <div class="arrows">
-                        <span class="glyphicon glyphicon-arrow-up"></span>
-                        <span class="glyphicon glyphicon-arrow-down waypoint"></span>
+                        <span class="glyphicon glyphicon-arrow-up nav-item"></span>
+                        <span class="glyphicon glyphicon-arrow-down waypoint nav-item"></span>
                     </div>
                     <div class="row movies-stack">
 
                     </div>
-                    <div class="movie-info" style="display:none;">
+                    <div class="movie-info">
 
                     </div>
                 </div>
